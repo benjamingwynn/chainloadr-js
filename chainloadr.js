@@ -72,4 +72,9 @@
 	}
 
 	window.chainloadr = chainloadr;
+
+	// Chainloadr is loaded, now execute
+	document.querySelectorAll("[data-chainloadr]").forEach((chainloadrScript) => {
+		eval(chainloadrScript.innerHTML);
+	});
 }());

@@ -88,7 +88,18 @@
 	window.chainloadr = chainloadr;
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
-	document.querySelectorAll("[data-chainloadr]").forEach((chainloadrScript) => {
-		eval(`(function chainloadrPostLoad() { ${chainloadrScript.innerHTML} } () );`);
+	document.querySelectorAll("[data-chainloadr]").forEach((oldScript) => {
+		const newScript = document.createElement("script");
+
+		if (oldScript.innerHTML) {
+			newScript.innerHTML = oldScript.innerHTML;
+		} else if (oldScript.dataset.chainloadr) {
+			newScript.src = oldScript.dataset.chainloadr;
+		} else {
+			throw new Error("data-chainloadr script passed, but it has no contents and no external script. Please consult the documentation.");
+		}
+
+		oldScript.parentNode.insertBefore(newScript, oldScript.nextSibling);
+		oldScript.remove();
 	});
 }());

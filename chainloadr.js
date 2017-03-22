@@ -89,6 +89,6 @@
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	document.querySelectorAll("[data-chainloadr]").forEach((chainloadrScript) => {
-		eval(chainloadrScript.innerHTML);
+		eval(`(function chainloadrPostLoad() { ${chainloadrScript.innerHTML} } () );`);
 	});
 }());

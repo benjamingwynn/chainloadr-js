@@ -8,26 +8,29 @@
 	}
 
 	function chainloadr (arg1, arg2) {
+		// check arguments
 		let libs, options, loadedScripts;
 
 		libs = arg1;
 		options = arg2;
 
-		if (!options) {
+		if (!arg2) {
 			options = {};
 		}
 
-		if (typeof options === "function") {
-			options = {options};
+		if (typeof arg1 === "string") {
+			libs = [arg1];
 		}
 
-		if (typeof libs === "string") {
-			libs = [libs];
+		if (typeof arg2 === "function") {
+			options = {"onload": arg2};
 		}
 
 		if (!libs || libs.length < 1) {
-			throw Error("First argument must be an array of libraries to load");
+			throw Error("First argument must be either a libaray name, an array of libraries to load");
 		}
+
+		// load scripts
 
 		loadedScripts = 0;
 

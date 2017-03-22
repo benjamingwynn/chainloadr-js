@@ -7,8 +7,8 @@
 		return oldstring.split(target).join(fill);
 	}
 
-	function cdnrequire (arg1, arg2) {
-		let libs, options;
+	function chainloadr (arg1, arg2) {
+		let libs, options, loadedScripts;
 
 		libs = arg1;
 		options = arg2;
@@ -18,8 +18,7 @@
 		}
 
 		if (typeof options === "function") {
-			const oncomplete = options;
-			options = {oncomplete};
+			options = {options};
 		}
 
 		if (typeof libs === "string") {
@@ -30,15 +29,13 @@
 			throw Error("First argument must be an array of libraries to load");
 		}
 
-		let loadedScripts;
-
 		loadedScripts = 0;
 
-		const totalScripts = libs.length;
-
 		// Ensure CDN's have trailing slashes, or they will not work
-		const cdn = options.cdn || "https://unpkg.com/";
-		// https://wzrd.in/standalone/
+		const
+			totalScripts = libs.length,
+			cdn = options.cdn || "https://unpkg.com/",
+			head = document.getElementsByTagName("head")[0];
 
 		function scriptLoad () {
 			console.log(this);
@@ -46,7 +43,7 @@
 			if (options.onload) {
 				options.onload(strReplace(this.src, cdn, ""));
 			}
-			
+
 			loadedScripts += 1;
 
 			if (loadedScripts === totalScripts) {
@@ -56,15 +53,14 @@
 			}
 		}
 
-		const head = document.getElementsByTagName("head")[0];
-
 		libs.forEach((lib) => {
 			const script = document.createElement("script");
+
 			script.onload = scriptLoad;
 			if (!options.sync) {
 				script.async = "async";
 			}
-			
+
 			if (lib.indexOf("./") === 0) {
 				script.src = `${lib}`;
 			} else {

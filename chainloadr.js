@@ -23,7 +23,7 @@
 		}
 
 		if (typeof arg2 === "function") {
-			options = {"onload": arg2};
+			options = {"oncomplete": arg2};
 		}
 
 		if (!libs || libs.length < 1) {

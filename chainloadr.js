@@ -37,43 +37,54 @@
 			cdn = options.cdn || "https://unpkg.com/",
 			head = document.getElementsByTagName("head")[0];
 
-		function scriptLoad () {
-			console.log(this);
+		function loadScript (src) {
+			// Check if the script is already loaded
+			if (document.querySelector(`[src="${src}"]`)) {
+				console.warn(`Script ${src} is already loaded`);
 
-			if (options.onload) {
-				options.onload(strReplace(this.src, cdn, ""));
+				return;
 			}
 
-			loadedScripts += 1;
+			function onload () {
+				console.log(this);
 
-			if (loadedScripts === totalScripts) {
-				if (options.oncomplete) {
-					options.oncomplete();
+				if (options.onload) {
+					options.onload(strReplace(this.src, cdn, ""));
+				}
+
+				loadedScripts += 1;
+
+				if (loadedScripts === totalScripts) {
+					if (options.oncomplete) {
+						options.oncomplete();
+					}
 				}
 			}
-		}
 
-		libs.forEach((lib) => {
 			const script = document.createElement("script");
 
-			script.onload = scriptLoad;
+			script.onload = onload;
+			script.src = src;
+
 			if (!options.sync) {
 				script.async = "async";
 			}
 
-			if (lib.indexOf("./") === 0) {
-				script.src = `${lib}`;
-			} else {
-				script.src = `${cdn}${lib}`;
-			}
-
 			head.appendChild(script);
+		}
+
+		libs.forEach((lib) => {
+			if (lib.indexOf("./") === 0) {
+				loadScript(`${lib}`);
+			} else {
+				loadScript(`${cdn}${lib}`);
+			}
 		});
 	}
 
 	window.chainloadr = chainloadr;
 
-	// Chainloadr is loaded, now execute
+	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	document.querySelectorAll("[data-chainloadr]").forEach((chainloadrScript) => {
 		eval(chainloadrScript.innerHTML);
 	});

@@ -88,15 +88,33 @@
 		}
 
 		libs.forEach((lib) => {
-			if (lib.indexOf("./") === 0) {
+			if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
 				loadScript(`${lib}`);
 			} else {
 				loadScript(`${cdn}${lib}`);
 			}
 		});
 	}
+	
+	/* DO NOT USE */
+	
+	function require (lib) {
+		// HACK: use an error to get what called this file as a url, there is probably an easier way to do this
+		
+		const
+			error = new Error(),
+			deconstructedPaths = error.stack.split("at "),
+			origin = deconstructedPaths[deconstructedPaths.length - 1],
+			deconstructedOrigin = origin.split(":"),
+			url = `${deconstructedOrigin[0]}:${deconstructedOrigin[1]}`;
+		
+		console.log("url", url);
+		
+		chainloadr(`${url}/${strReplace(lib, "../", "")}`);
+	}
 
 	window.chainloadr = chainloadr;
+	window.chainloadr.require = require;
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	document.querySelectorAll("[data-chainloadr]").forEach((oldScript) => {

@@ -7,31 +7,42 @@
 		return oldstring.split(target).join(fill);
 	}
 
-	function chainloadr (arg1, arg2) {
-		// check arguments
+	function chainloadr (arg1, arg2, arg3) {
 		let libs, options, loadedScripts;
-
-		libs = arg1;
-		options = arg2;
-
-		if (!arg2) {
-			options = {};
-		}
-
+		
+		/* assign argument 1 */
 		if (typeof arg1 === "string") {
 			libs = [arg1];
-		}
-
-		if (typeof arg2 === "function") {
-			options = {"oncomplete": arg2};
-		}
-
-		if (!libs || libs.length < 1) {
+		} else if (Array.isArray(arg1)) {
+			if (arg1.length) {
+				libs = arg1;
+			} else {
+				throw Error("libs array is empty");
+			}
+		} else {
 			throw Error("First argument must be either a libaray name, an array of libraries to load");
 		}
-
+		
+		/* assign argument 2 */
+		if (arg2) {
+			if (Array.isArray(arg2)) {
+				throw Error("Second argument should not be an array.");
+			} else if (typeof arg2 === "function") {
+				options = {"oncomplete": arg2};
+			} else {
+				options = arg2;
+			}
+		} else {
+			console.warn("Only one argument provided. Provide a callback to wait for your file(s) to load");
+			options = {};
+		}
+		
+		/* assign argument 3 */
+		if (arg3 && typeof arg3 === "function") {
+			options.oncomplete = arg3;
+		}
+		
 		// load scripts
-
 		loadedScripts = 0;
 
 		// Ensure CDN's have trailing slashes, or they will not work

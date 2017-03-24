@@ -41,7 +41,7 @@ You can use Chainloadr inline. Once Chainloadr loads, it will automatically exec
 
 ```
 <script async src="path/to/chainloadr.js" data-chainloadr>
-	chainloadr("jquery@3", => {
+	chainloadr("jquery@3", () => {
 		// We can now use window.jQuery
 	});
 </script>

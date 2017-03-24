@@ -1,0 +1,17 @@
+<!DOCTYPE>
+<html>
+	<head>
+		<title>Chainloadr Demo</title>
+	</head>
+	<body>
+		<header>
+			<h1>chainloadr</h1>
+		</header>
+		
+		<script async src="chainloadr.js" data-chainloadr>
+			chainloadr("jquery@3", () => {
+				console.log("jQuery", jQuery);
+			});
+		</script>
+	</body>
+</html>

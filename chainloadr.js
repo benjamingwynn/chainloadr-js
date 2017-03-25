@@ -2,6 +2,24 @@
 
 (function loadChainloadr () {
 	"use strict";
+	
+	const repositories = {
+		local (lib) {
+			if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
+				return lib;
+			}
+			
+			return null;
+		},
+		
+		unpkg (lib) {
+			return `https://unpkg.com/${lib}`;
+		},
+		
+		browserify (lib) {
+			return `https://wzrd.in/standalone/${lib}`;
+		}
+	};
 
 	function strReplace (oldstring, target, fill) {
 		return oldstring.split(target).join(fill);
@@ -36,19 +54,18 @@
 			console.warn("Only one argument provided. Provide a callback to wait for your file(s) to load");
 			options = {};
 		}
-		
+
 		/* assign argument 3 */
 		if (arg3 && typeof arg3 === "function") {
 			options.oncomplete = arg3;
 		}
 		
+
 		// load scripts
 		loadedScripts = 0;
 
-		// Ensure CDN's have trailing slashes, or they will not work
 		const
 			totalScripts = libs.length,
-			cdn = options.cdn || "https://unpkg.com/",
 			head = document.getElementsByTagName("head")[0];
 
 		function loadScript (src) {
@@ -59,11 +76,13 @@
 				return;
 			}
 
-			function onload () {
+			const script = document.createElement("script");
+
+			script.onload = function onload () {
 				console.log(this);
 
 				if (options.onload) {
-					options.onload(strReplace(this.src, cdn, ""));
+					options.onload();
 				}
 
 				loadedScripts += 1;
@@ -73,11 +92,12 @@
 						options.oncomplete();
 					}
 				}
-			}
+			};
 
-			const script = document.createElement("script");
+			script.onerror = function onerror () {
+				// try using another repo?
+			};
 
-			script.onload = onload;
 			script.src = src;
 
 			if (!options.sync) {
@@ -88,10 +108,45 @@
 		}
 
 		libs.forEach((lib) => {
-			if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
-				loadScript(`${lib}`);
+			const
+				repoLib = lib.split("::");
+			
+			if (repoLib[1]) {
+				const specifiedRepo = repositories[repoLib[0]];
+				
+				if (specifiedRepo) {
+					console.log("using speicifed repo", repoLib[0]);
+					const src = specifiedRepo(repoLib[1]);
+					
+					if (src) {
+						loadScript(src);
+					} else {
+						console.error("The specified repository does not contain the package you requested.");
+					}
+				} else {
+					console.error("The specified repository is not installed.");
+				}
 			} else {
-				loadScript(`${cdn}${lib}`);
+				const repoKeys = Object.keys(repositories);
+
+				let repoIndex;
+
+				for (repoIndex = 0; repoIndex < repoKeys.length; repoIndex += 1) {
+					const
+						repoName = repoKeys[repoIndex],
+						repo = repositories[repoName],
+						src = repo(lib);
+
+					if (src) {
+						console.log("Using repo", repoName);
+
+						loadScript(src);
+
+						return;
+					}
+				}
+
+				console.error("Load failed, no repos were able to handle the request");
 			}
 		});
 	}

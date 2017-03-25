@@ -110,7 +110,7 @@
 		
 		console.log("url", url);
 		
-		chainloadr(`${url}/${strReplace(lib, "../", "")}`);
+		chainloadr(`${url}/${strReplace(lib, "../", "")}`, {"sync": true});
 	}
 
 	window.chainloadr = chainloadr;

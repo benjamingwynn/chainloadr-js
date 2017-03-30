@@ -2,20 +2,20 @@
 
 (function loadChainloadr () {
 	"use strict";
-	
+
 	const repositories = {
 		local (lib) {
 			if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
 				return lib;
 			}
-			
+
 			return null;
 		},
-		
+
 		unpkg (lib) {
 			return `https://unpkg.com/${lib}`;
 		},
-		
+
 		browserify (lib) {
 			return `https://wzrd.in/standalone/${lib}`;
 		}
@@ -27,7 +27,7 @@
 
 	function chainloadr (arg1, arg2, arg3) {
 		let libs, options, loadedScripts;
-		
+
 		/* assign argument 1 */
 		if (typeof arg1 === "string") {
 			libs = [arg1];
@@ -40,7 +40,7 @@
 		} else {
 			throw Error("First argument must be either a libaray name, an array of libraries to load");
 		}
-		
+
 		/* assign argument 2 */
 		if (arg2) {
 			if (Array.isArray(arg2)) {
@@ -59,7 +59,7 @@
 		if (arg3 && typeof arg3 === "function") {
 			options.oncomplete = arg3;
 		}
-		
+
 
 		// load scripts
 		loadedScripts = 0;
@@ -110,14 +110,14 @@
 		libs.forEach((lib) => {
 			const
 				repoLib = lib.split("::");
-			
+
 			if (repoLib[1]) {
 				const specifiedRepo = repositories[repoLib[0]];
-				
+
 				if (specifiedRepo) {
 					console.log("using speicifed repo", repoLib[0]);
 					const src = specifiedRepo(repoLib[1]);
-					
+
 					if (src) {
 						loadScript(src);
 					} else {
@@ -150,21 +150,21 @@
 			}
 		});
 	}
-	
+
 	/* DO NOT USE */
-	
+
 	function require (lib) {
 		// HACK: use an error to get what called this file as a url, there is probably an easier way to do this
-		
+
 		const
 			error = new Error(),
 			deconstructedPaths = error.stack.split("at "),
 			origin = deconstructedPaths[deconstructedPaths.length - 1],
 			deconstructedOrigin = origin.split(":"),
 			url = `${deconstructedOrigin[0]}:${deconstructedOrigin[1]}`;
-		
+
 		console.log("url", url);
-		
+
 		chainloadr(`${url}/${strReplace(lib, "../", "")}`, {"sync": true});
 	}
 

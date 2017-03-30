@@ -127,7 +127,7 @@
 					console.error("The specified repository is not installed.");
 				}
 			} else {
-				const repoKeys = Object.keys(repositories);
+				const repoKeys = options.repositories || ["local", "unpkg", "browserify"];
 
 				let repoIndex;
 
@@ -137,12 +137,16 @@
 						repo = repositories[repoName],
 						src = repo(lib);
 
-					if (src) {
-						console.log("Using repo", repoName);
+					if (repo) {
+						if (src) {
+							console.log("Using repo", repoName);
 
-						loadScript(src);
+							loadScript(src);
 
-						return;
+							return;
+						}
+					} else {
+						console.warn(`The repo ${repoName} isn't installed. Attempting to use the next available repository`);
 					}
 				}
 

@@ -7,10 +7,10 @@
 		<header>
 			<h1>chainloadr</h1>
 		</header>
-		
+
 		<script async src="chainloadr.js" data-chainloadr>
-			chainloadr("jquery@3", () => {
-				console.log("jQuery", jQuery);
+			chainloadr("jQuery from jquery@3", ($) => {
+				console.log("jQuery", $);
 			});
 		</script>
 	</body>

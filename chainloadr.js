@@ -26,11 +26,23 @@
 	}
 
 	function chainloadr (arg1, arg2, arg3) {
-		let libs, options, loadedScripts;
+		let libs, options, loadedScripts, imports;
 
 		/* assign argument 1 */
+
 		if (typeof arg1 === "string") {
-			libs = [arg1];
+			const splitArgument1FromSplit = arg1.split(" from ");
+
+			if (splitArgument1FromSplit[1]) {
+				imports = splitArgument1FromSplit[0].split(",").map((importVariable) =>
+					importVariable.trim()
+				);
+
+				libs = [splitArgument1FromSplit[1]];
+			} else {
+				libs = [arg1];
+			}
+
 		} else if (Array.isArray(arg1)) {
 			if (arg1.length) {
 				libs = arg1;
@@ -60,13 +72,17 @@
 			options.oncomplete = arg3;
 		}
 
+		if (!imports) {
+			imports = options.imports || [];
+		}
 
 		// load scripts
 		loadedScripts = 0;
 
 		const
 			totalScripts = libs.length,
-			head = document.getElementsByTagName("head")[0];
+			head = document.getElementsByTagName("head")[0],
+			allImported = [];
 
 		function loadScript (src) {
 			// Check if the script is already loaded
@@ -78,24 +94,33 @@
 
 			const script = document.createElement("script");
 
+			script.dataset.imports = imports.join(",");
+
 			script.onload = function onload () {
 				console.log(this);
+				const importedArray = this.dataset.imports.split(",");
+
+				// add to the array and remove from window
+				importedArray.forEach((imported) => {
+					allImported.push(window[imported]);
+					delete window[imported];
+				});
 
 				if (options.onload) {
-					options.onload();
+					options.onload(importedArray.length > 1 ? importedArray : importedArray[0]);
 				}
 
 				loadedScripts += 1;
 
 				if (loadedScripts === totalScripts) {
 					if (options.oncomplete) {
-						options.oncomplete();
+						options.oncomplete(importedArray.length > 1 ? allImported : allImported[0]);
 					}
 				}
 			};
 
 			script.onerror = function onerror () {
-				// try using another repo?
+				// TODO: try using another repo?
 			};
 
 			script.src = src;

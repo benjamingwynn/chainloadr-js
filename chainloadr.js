@@ -20,9 +20,7 @@
 			browserify (lib) {
 				return `https://wzrd.in/standalone/${lib}`;
 			}
-		},
-
-		defaultRepoOrder = Object.keys(repositories);
+		};
 
 	function strReplace (oldstring, target, fill) {
 		return oldstring.split(target).join(fill);
@@ -46,56 +44,8 @@
 		xhttp.send();
 	}
 
-	function chainloadr (arg1, arg2, arg3) {
-		let libs, options, loadedScripts, imports;
-
-		/* assign argument 1 */
-
-		if (typeof arg1 === "string") {
-			const splitArgument1FromSplit = arg1.split(" from ");
-
-			if (splitArgument1FromSplit[1]) {
-				imports = splitArgument1FromSplit[0].split(",").map((importVariable) =>
-					importVariable.trim()
-				);
-
-				libs = [splitArgument1FromSplit[1]];
-			} else {
-				libs = [arg1];
-			}
-
-		} else if (Array.isArray(arg1)) {
-			if (arg1.length) {
-				libs = arg1;
-			} else {
-				throw Error("libs array is empty");
-			}
-		} else {
-			throw Error("First argument must be either a libaray name, an array of libraries to load");
-		}
-
-		/* assign argument 2 */
-		if (arg2) {
-			if (Array.isArray(arg2)) {
-				throw Error("Second argument should not be an array.");
-			} else if (typeof arg2 === "function") {
-				options = {"oncomplete": arg2};
-			} else {
-				options = arg2;
-			}
-		} else {
-			console.warn("Only one argument provided. Provide a callback to wait for your file(s) to load");
-			options = {};
-		}
-
-		/* assign argument 3 */
-		if (arg3 && typeof arg3 === "function") {
-			options.oncomplete = arg3;
-		}
-
-		if (!imports) {
-			imports = options.imports || [];
-		}
+	function chainloadr (libs, options, imports) {
+		let loadedScripts;
 
 		// load scripts
 		loadedScripts = 0;
@@ -163,7 +113,7 @@
 
 		function tryRepo (lib, repoIndex) {
 			const
-				repoKeys = options.repositories || defaultRepoOrder,
+				repoKeys = options.repositories || window.chainloadr.configuration.respositoryOrder,
 				repoName = repoKeys[repoIndex],
 				repo = repositories[repoName],
 				src = repo(lib);
@@ -247,8 +197,71 @@
 		chainloadr(`${url}/${strReplace(lib, "../", "")}`, {"sync": true});
 	}
 
-	window.chainloadr = chainloadr;
+	window.chainloadr = (arg1, arg2, arg3) => {
+
+		/*
+			This function simply remaps the arguments provided to a common standard of arguments.
+			It also handles any validation for the arguments.
+		*/
+
+		let libs, options, imports;
+
+		/* assign argument 1 */
+
+		if (typeof arg1 === "string") {
+			const splitArgument1FromSplit = arg1.split(" from ");
+
+			if (splitArgument1FromSplit[1]) {
+				imports = splitArgument1FromSplit[0].split(",").map((importVariable) =>
+					importVariable.trim()
+				);
+
+				libs = [splitArgument1FromSplit[1]];
+			} else {
+				libs = [arg1];
+			}
+
+		} else if (Array.isArray(arg1)) {
+			if (arg1.length) {
+				libs = arg1;
+			} else {
+				throw Error("libs array is empty");
+			}
+		} else {
+			throw Error("First argument must be either a libaray name, an array of libraries to load");
+		}
+
+		/* assign argument 2 */
+		if (arg2) {
+			if (Array.isArray(arg2)) {
+				throw Error("Second argument should not be an array.");
+			} else if (typeof arg2 === "function") {
+				options = {"oncomplete": arg2};
+			} else {
+				options = arg2;
+			}
+		} else {
+			console.warn("Only one argument provided. Provide a callback to wait for your file(s) to load");
+			options = {};
+		}
+
+		/* assign argument 3 */
+		if (arg3 && typeof arg3 === "function") {
+			options.oncomplete = arg3;
+		}
+
+		if (!imports) {
+			imports = options.imports || [];
+		}
+
+		chainloadr(libs, options, imports);
+	};
+
 	window.chainloadr.require = require;
+	window.chainloadr.version = "0.0.0";
+	window.chainloadr.configuration = {
+		"respositoryOrder": Object.keys(repositories)
+	};
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	(function autoExec () {
@@ -274,6 +287,5 @@
 			oldScript.parentNode.insertBefore(newScript, oldScript.nextSibling);
 			oldScript.remove();
 		}
-
 	}());
 }());

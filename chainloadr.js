@@ -5,20 +5,20 @@
 
 	const
 		repositories = {
-			local (lib) {
+			local (lib, callback) {
 				if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
-					return lib;
+					callback(lib);
+				} else {
+					callback(null);
 				}
-
-				return null;
 			},
 
-			unpkg (lib) {
-				return `https://unpkg.com/${lib}`;
+			unpkg (lib, callback) {
+				callback(`https://unpkg.com/${lib}`);
 			},
 
-			browserify (lib) {
-				return `https://wzrd.in/standalone/${lib}`;
+			browserify (lib, callback) {
+				callback(`https://wzrd.in/standalone/${lib}`);
 			}
 		};
 
@@ -115,39 +115,40 @@
 			const
 				repoKeys = options.repositories || window.chainloadr.configuration.respositoryOrder,
 				repoName = repoKeys[repoIndex],
-				repo = repositories[repoName],
-				src = repo(lib);
+				repo = repositories[repoName];
 
-			console.log("Checking for repo...", repoName);
+			repo(lib, (src) => {
+				console.log("Checking for repo...", repoName);
 
-			if (repo) {
-				console.log("Found repo!", repoName);
+				if (repo) {
+					console.log("Found repo!", repoName);
 
-				if (src) {
-					console.log("Repo has package!", repoName);
+					if (src) {
+						console.log("Repo has package!", repoName);
 
-					// Does the src path resolve correctly?
-					loadScript(src, (error) => {
-						// TODO: if error, load the next path, otherwise give up here
-						if (error) {
-							console.error(error);
-							console.error(`${repoName} claimed it had a package, but the package URL didn't resolve into a usable script.`);
+						// Does the src path resolve correctly?
+						loadScript(src, (error) => {
+							// TODO: if error, load the next path, otherwise give up here
+							if (error) {
+								console.error(error);
+								console.error(`${repoName} claimed it had a package, but the package URL didn't resolve into a usable script.`);
 
-							if (repoIndex === repoKeys.length - 1) {
-								throw new Error("Load failed, no repos were able to handle the request");
-							} else {
-								tryRepo(lib, repoIndex + 1);
+								if (repoIndex === repoKeys.length - 1) {
+									throw new Error("Load failed, no repos were able to handle the request");
+								} else {
+									tryRepo(lib, repoIndex + 1);
+								}
 							}
-						}
-					});
+						});
+					} else {
+						console.warn(`The repo ${repoName} either cannot handle, or doesn't have the package.`);
+						tryRepo(lib, repoIndex + 1);
+					}
 				} else {
-					console.warn(`The repo ${repoName} either cannot handle, or doesn't have the package.`);
+					console.warn(`The repo ${repoName} isn't installed. Attempting to use the next available repository`);
 					tryRepo(lib, repoIndex + 1);
 				}
-			} else {
-				console.warn(`The repo ${repoName} isn't installed. Attempting to use the next available repository`);
-				tryRepo(lib, repoIndex + 1);
-			}
+			})
 		}
 
 		libs.forEach((lib) => {
@@ -260,7 +261,7 @@
 	window.chainloadr.require = require;
 	window.chainloadr.version = "0.0.0";
 	window.chainloadr.configuration = {
-		"respositoryOrder": Object.keys(repositories)
+		"respositoryOrder": ["local", "unpkg"]
 	};
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr

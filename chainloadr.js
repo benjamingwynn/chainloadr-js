@@ -48,21 +48,124 @@
 			},
 
 			cdnjs (lib, callback) {
-				// 1. Request the package information
-				getURL(`https://api.cdnjs.com/libraries/${lib}`, (error, rawPkgData) => {
-					if (error) {
-						console.error(error);
-						callback(null);
+				// 1. Seperate the string into package and version requested
+				const
+					seperated = lib.split("@"),
+					pkgName = seperated[0],
+					pkgVer = seperated[1];
 
-						return;
-					}
+				// 2. We need to do a local SemVer compare. Let's grab a library to do this for us
 
-					console.log(rawPkgData);
+				/*
+					TODO:	* An entire repo having a chainloaded dependancy is questionable at best.
+							* The dependancy should be loaded from another CDN or some static source. Not from a random GitHub page.
+				*/
 
-					// 2. Parse the package information as JSON
-					const packageData = JSON.parse(rawPkgData);
+				window.chainloadr("semver from https://mottie.github.io/tablesorter/js/extras/semver-mod.js", (semver) => {
+					// 3. Request the package information
+					getURL(`https://api.cdnjs.com/libraries/${pkgName}`, (error, rawPkgData) => {
+						if (error) {
+							console.error(error);
+							callback(null);
 
-					console.log(packageData);
+							return;
+						}
+
+						console.log(rawPkgData);
+
+						// 4. Parse the package information as JSON
+						const
+							assets = JSON.parse(rawPkgData).assets,
+							nAssets = assets.length;
+
+						// 5. Loop over assets
+
+						let assetI, nVersionsOkay;
+
+						nVersionsOkay = 0;
+
+						for (assetI = 0; assetI < nAssets; assetI += 1) {
+							// 6. Fix version information to be semver compatible where possible
+							const
+								asset = assets[assetI];
+
+							let assetVersion;
+
+							assetVersion = asset.version;
+
+							const splitAsset = assetVersion.split(".");
+
+							if (splitAsset.length < 3) {
+								if (splitAsset[1].length === 1) {
+									assetVersion += ".0";
+								} else {
+									assetVersion = `${splitAsset[0]}.${splitAsset[1].split("").join(".")}`;
+								}
+							}
+
+							console.log("assetVersion", assetVersion);
+
+							if (semver.satisfies(assetVersion, pkgVer)) {
+								nVersionsOkay += 1;
+
+								// 7. Search for the latest version of the library
+								getURL(`https://api.cdnjs.com/libraries?search=${pkgName}`, (latestError, rawResults) => {
+									if (latestError) {
+										console.error(latestError);
+										callback(null);
+
+										return;
+									}
+
+									// 8. Parse as JSON
+
+									const
+										results = JSON.parse(rawResults).results,
+										nResults = results.length;
+
+									let resultI,
+										useFile;
+
+									console.log("results", results);
+
+									// 9. Get the result that is the requsted package **exactly**
+
+									for (resultI = 0; resultI < nResults; resultI += 1) {
+										const result = results[resultI];
+
+										console.log(result.name);
+
+										if (result.name === pkgName) {
+											// 10. Save the latest package path
+											const pathSplit = result.latest.split("/");
+
+											useFile = pathSplit[pathSplit.length - 1];
+
+											break;
+										}
+									}
+
+									if (useFile) {
+										console.log("Got useFile from query find");
+										console.log("useFile", useFile);
+
+										// 11. Build the URL and return it in our callback
+										callback(`https://cdnjs.cloudflare.com/ajax/libs/${pkgName}/${asset.version}/${useFile}`);
+									} else {
+										console.error("Couldn't find a file to load from the search query API.");
+										callback(null);
+									}
+								});
+
+								break;
+							}
+						}
+
+						if (nVersionsOkay === 0) {
+							console.warn("CDNJS has the package, but not the version of the package you requested.");
+							callback(null);
+						}
+					});
 				});
 			},
 
@@ -147,43 +250,42 @@
 		}
 
 		function tryRepo (lib, repoIndex) {
-			const
-				repoKeys = options.repositories || window.chainloadr.configuration.respositoryOrder,
-				repoName = repoKeys[repoIndex],
-				repo = repositories[repoName];
+			const repoKeys = options.repositories || window.chainloadr.configuration.respositoryOrder;
 
-			repo(lib, (src) => {
+			if (repoIndex === repoKeys.length) {
+				throw new Error("Load failed, no repos were able to handle the request");
+			} else {
+				const
+					repoName = repoKeys[repoIndex],
+					repo = repositories[repoName];
+
 				console.log("Checking for repo...", repoName);
 
 				if (repo) {
 					console.log("Found repo!", repoName);
 
-					if (src) {
-						console.log("Repo has package!", repoName);
+					repo(lib, (src) => {
+						if (src) {
+							console.log("Repo has package!", repoName);
 
-						// Does the src path resolve correctly?
-						loadScript(src, (error) => {
-							// TODO: if error, load the next path, otherwise give up here
-							if (error) {
-								console.error(error);
-								console.error(`${repoName} claimed it had a package, but the package URL didn't resolve into a usable script.`);
+							// Does the src path resolve correctly?
+							loadScript(src, (error) => {
+								if (error) {
+									console.warn(`${repoName} claimed it had ${lib}, but the package URL didn't resolve into a usable script.`);
 
-								if (repoIndex === repoKeys.length - 1) {
-									throw new Error("Load failed, no repos were able to handle the request");
-								} else {
 									tryRepo(lib, repoIndex + 1);
 								}
-							}
-						});
-					} else {
-						console.warn(`The repo ${repoName} either cannot handle, or doesn't have the package.`);
-						tryRepo(lib, repoIndex + 1);
-					}
+							});
+						} else {
+							console.warn(`The repo ${repoName} either cannot handle, or doesn't have the package.`);
+							tryRepo(lib, repoIndex + 1);
+						}
+					})
 				} else {
 					console.warn(`The repo ${repoName} isn't installed. Attempting to use the next available repository`);
 					tryRepo(lib, repoIndex + 1);
 				}
-			})
+			}
 		}
 
 		libs.forEach((lib) => {
@@ -191,21 +293,22 @@
 				repoLib = lib.split("::");
 
 			if (repoLib[1]) {
-				// use specified repo
+				// Use a specified custom repo
+				const customRepo = repositories[repoLib[0]];
 
-				const specifiedRepo = repositories[repoLib[0]];
-
-				if (specifiedRepo) {
+				if (customRepo) {
 					console.log("using speicifed repo", repoLib[0]);
-					const src = specifiedRepo(repoLib[1]);
-
-					if (src) {
-						loadScript(src, (error) => {
-							throw error;
-						});
-					} else {
-						console.error("The specified repository does not contain the package you requested.");
-					}
+					customRepo(repoLib[1], (src) => {
+						if (src) {
+							loadScript(src, (error) => {
+								if (error) {
+									throw error;
+								}
+							});
+						} else {
+							console.error("The specified repository does not contain the package you requested.");
+						}
+					});
 				} else {
 					console.error("The specified repository is not installed.");
 				}
@@ -295,10 +398,10 @@
 
 	window.chainloadr.require = require;
 	window.chainloadr.version = "0.0.0";
-	window.chainloadr.configuration = {
-		"respositoryOrder": ["local", "unpkg"]
-	};
 	window.chainloadr.repositories = repositories;
+	window.chainloadr.configuration = {
+		"respositoryOrder": ["local", "unpkg", "cdnjs"]
+	};
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	(function autoExec () {

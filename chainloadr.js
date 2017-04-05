@@ -263,6 +263,7 @@
 	window.chainloadr.configuration = {
 		"respositoryOrder": ["local", "unpkg"]
 	};
+	window.chainloadr.repositories = repositories;
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	(function autoExec () {

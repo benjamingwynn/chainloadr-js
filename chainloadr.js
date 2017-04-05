@@ -3,27 +3,24 @@
 (function loadChainloadr () {
 	"use strict";
 
-	const
-		repositories = {
-			local (lib, callback) {
-				if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
-					callback(lib);
-				} else {
-					callback(null);
-				}
-			},
-
-			unpkg (lib, callback) {
-				callback(`https://unpkg.com/${lib}`);
-			},
-
-			browserify (lib, callback) {
-				callback(`https://wzrd.in/standalone/${lib}`);
-			}
-		};
-
 	function strReplace (oldstring, target, fill) {
 		return oldstring.split(target).join(fill);
+	}
+
+	function getURL (url, callback) {
+		const xhttp = new XMLHttpRequest();
+
+		xhttp.onerror = function onerror () {
+			callback(this);
+		};
+
+		xhttp.onloadend = function onloadend () {
+			callback(null, this.responseText);
+		};
+
+		xhttp.open("GET", url, true);
+
+		xhttp.send();
 	}
 
 	function pingURL (url, callback) {
@@ -43,6 +40,44 @@
 
 		xhttp.send();
 	}
+
+	const
+		repositories = {
+			browserify (lib, callback) {
+				callback(`https://wzrd.in/standalone/${lib}`);
+			},
+
+			cdnjs (lib, callback) {
+				// 1. Request the package information
+				getURL(`https://api.cdnjs.com/libraries/${lib}`, (error, rawPkgData) => {
+					if (error) {
+						console.error(error);
+						callback(null);
+
+						return;
+					}
+
+					console.log(rawPkgData);
+
+					// 2. Parse the package information as JSON
+					const packageData = JSON.parse(rawPkgData);
+
+					console.log(packageData);
+				});
+			},
+
+			local (lib, callback) {
+				if (lib.indexOf("./") === 0 || lib.indexOf("://") > -1) {
+					callback(lib);
+				} else {
+					callback(null);
+				}
+			},
+
+			unpkg (lib, callback) {
+				callback(`https://unpkg.com/${lib}`);
+			}
+		};
 
 	function chainloadr (libs, options, imports) {
 		let loadedScripts;

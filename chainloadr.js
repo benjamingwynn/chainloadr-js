@@ -209,30 +209,58 @@
 
 					script.dataset.imports = imports.join(",");
 
-					script.onload = function onload () {
-						callback(null, this);
+					if (imports.length === 0 || options.useOnload ) {
+						script.onload = function onload () {
+							callback(null, this);
 
-						console.log(this);
-						const importedArray = this.dataset.imports.split(",");
+							console.log(this);
+							const importedArray = this.dataset.imports.split(",");
+
+							// add to the array and remove from window
+							importedArray.forEach((imported) => {
+								allImported.push(window[imported]);
+								delete window[imported];
+							});
+
+							if (options.onload) {
+								options.onload(importedArray.length > 1 ? importedArray : importedArray[0]);
+							}
+
+							loadedScripts += 1;
+
+							if (loadedScripts === totalScripts) {
+								if (options.oncomplete) {
+									options.oncomplete(importedArray.length > 1 ? allImported : allImported[0]);
+								}
+							}
+						};
+					} else {
+						const importedArray = script.dataset.imports.split(",");
 
 						// add to the array and remove from window
 						importedArray.forEach((imported) => {
-							allImported.push(window[imported]);
-							delete window[imported];
+							window.watch(imported, (value, oldObject, newObject) => {
+								allImported.push(newObject);
+
+								window.unwatch(imported);
+								console.log("value", value);
+								console.log("oldObject", oldObject);
+								console.log("newObject", newObject);
+
+								if (options.onload) {
+									options.onload(importedArray.length > 1 ? importedArray : importedArray[0]);
+								}
+
+								loadedScripts += 1;
+
+								if (loadedScripts === totalScripts) {
+									if (options.oncomplete) {
+										options.oncomplete(importedArray.length > 1 ? allImported : allImported[0]);
+									}
+								}
+							});
 						});
-
-						if (options.onload) {
-							options.onload(importedArray.length > 1 ? importedArray : importedArray[0]);
-						}
-
-						loadedScripts += 1;
-
-						if (loadedScripts === totalScripts) {
-							if (options.oncomplete) {
-								options.oncomplete(importedArray.length > 1 ? allImported : allImported[0]);
-							}
-						}
-					};
+					}
 
 					script.onerror = function onerror (scriptError) {
 						callback(scriptError);
@@ -319,10 +347,14 @@
 		});
 	}
 
-	/* DO NOT USE */
+	/*
+		For experimental use only. Allows the chainloading of scripts with require() in them.
+		use `window.require = chainloadr.require` to enable.
+	*/
 
 	function require (lib) {
 		// HACK: use an error to get what called this file as a url, there is probably an easier way to do this
+		// Only tested in Chrome 57 and 49!
 
 		const
 			error = new Error(),
@@ -333,7 +365,8 @@
 
 		console.log("url", url);
 
-		chainloadr(`${url}/${strReplace(lib, "../", "")}`, {"sync": true});
+		// TODO: (performance) run through chainloadr instead of chainloadr global with correctly assigned arguments
+		window.chainloadr(`${url}/${strReplace(lib, "../", "")}`, {"sync": true});
 	}
 
 	window.chainloadr = (arg1, arg2, arg3) => {
@@ -399,9 +432,72 @@
 	window.chainloadr.require = require;
 	window.chainloadr.version = "0.0.0";
 	window.chainloadr.repositories = repositories;
+
+	window.chainloadr.caches = {
+		"globals": {},
+		"paths": JSON.parse(localStorage.getItem("chainloadr-paths") || "{}")
+	};
+
 	window.chainloadr.configuration = {
 		"respositoryOrder": ["local", "unpkg", "cdnjs"]
 	};
+	
+	(function addWinWatch () {
+		
+		/*
+			Based on https://gist.github.com/eligrey/384583
+		*/
+		
+		if (!window.watch) {
+			Object.defineProperty(Object.getPrototypeOf(window), "watch", {
+				"configurable": true,
+				"enumerable": false,
+				"writable": false,
+				value (prop, handler) {
+					let oldval, newval;
+					
+					oldval = this[prop];
+					newval = oldval;
+
+					function getter () {
+						return newval;
+					}
+
+					function setter (val) {
+						oldval = newval;
+						newval = handler.call(this, prop, oldval, val);
+
+						return newval;
+					}
+
+					// can't watch constants
+//					if (delete this[prop]) {
+						Object.defineProperty(this, prop, {
+							"configurable": true,
+							"enumerable": true,
+							"get": getter,
+							"set": setter
+						});
+//					}
+				}
+			});
+		}
+		
+		if (!window.unwatch) {
+			Object.defineProperty(Object.getPrototypeOf(window), "unwatch", {
+				"enumerable": false,
+				"configurable": true,
+				"writable": false,
+				value (prop) {
+					const val = this[prop];
+
+					// remove accessors
+					delete this[prop];
+					this[prop] = val;
+				}
+			});
+		}
+	}());
 
 	// Chainloadr is loaded, now execute scripts marked with data-chainloadr
 	(function autoExec () {

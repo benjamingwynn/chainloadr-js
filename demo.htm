@@ -8,8 +8,12 @@
 			<h1>chainloadr</h1>
 		</header>
 		<script async src="chainloadr.js" data-chainloadr>
-			chainloadr("jQuery from jquery@3", ($) => {
-				console.log("jQuery", $);
+			chainloadr("jQuery from jquery@3", (jq) => {
+				console.log("jq", jq);
+				console.log("$", $);
+				console.log("jQuery", jQuery);
+				console.log("window.$", window.$);
+				console.log("window.jQuery", window.jQuery);
 			});
 		</script>
 	</body>

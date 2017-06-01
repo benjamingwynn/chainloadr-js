@@ -1,1 +1,1 @@
-{"extends": [ "./eslint/eslintrc.es6.json"]}
+{"extends": [ "./eslint/eslintrc.module.json"]}

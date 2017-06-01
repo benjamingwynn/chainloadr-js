@@ -7,7 +7,7 @@
 		return oldstring.split(target).join(fill)
 	}
 
-	function getURL (url, callback) {
+	function getUrl (url, callback) {
 		const xhttp = new XMLHttpRequest()
 
 		xhttp.onerror = function onerror () {
@@ -23,7 +23,7 @@
 		xhttp.send()
 	}
 
-	function pingURL (url, callback) {
+	function pingUrl (url, callback) {
 		const xhttp = new XMLHttpRequest()
 
 		xhttp.onerror = function onerror () {

@@ -1,3 +1,4 @@
 [submodule "eslint"]
 	path = eslint
 	url = https://github.com/benjamingwynn/eslint-config-gwynn.git
+	branch = master
